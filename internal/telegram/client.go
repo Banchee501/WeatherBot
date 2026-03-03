@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -56,4 +57,30 @@ func (c *Client) GetUpdates(offset int) ([]Update, error) {
 	}
 
 	return updateResp.Result, nil
+}
+
+func (c *Client) SendMessage(chatID int64, text string) error {
+	url := fmt.Sprintf(
+		"https://api.telegram.org/bot%s/sendMessage",
+		c.Token,
+	)
+
+	body := map[string]interface{}{
+		"chat_id": chatID,
+		"text":    text,
+	}
+
+	jsonBody, _ := json.Marshal(body)
+
+	resp, err := c.httpClient.Post(
+		url,
+		"application/json",
+		bytes.NewBuffer(jsonBody),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
 }
