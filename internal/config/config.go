@@ -32,10 +32,10 @@ func Load() *Config {
 		log.Fatal("WEATHER_API_KEY is not set in .env file")
 	}
 
+	//повертаємо struct Config
+
 	return &Config{
 		TelegramToken: token,
 		WeatherAPIKey: APIKey,
 	}
 }
-
-//повертаємо struct Config
