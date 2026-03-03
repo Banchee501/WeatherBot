@@ -27,8 +27,8 @@ func Load() *Config {
 		log.Fatal("TELEGRAM_TOKEN is not set in .env file")
 	}
 
-	APIKey := os.Getenv("WEATHER_API_KEY")
-	if APIKey == "" {
+	weatherKey := os.Getenv("WEATHER_API_KEY")
+	if weatherKey == "" {
 		log.Fatal("WEATHER_API_KEY is not set in .env file")
 	}
 
@@ -36,6 +36,6 @@ func Load() *Config {
 
 	return &Config{
 		TelegramToken: token,
-		WeatherAPIKey: APIKey,
+		WeatherAPIKey: weatherKey,
 	}
 }

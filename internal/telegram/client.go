@@ -17,7 +17,7 @@ func NewClient(token string) *Client {
 	return &Client{
 		Token: token,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 35 * time.Second,
 		},
 	}
 }
