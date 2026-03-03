@@ -7,14 +7,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
-//читаємо .env
-
 type Config struct {
 	TelegramToken string
 	WeatherAPIKey string
 }
-
-//зберігаємо токени
 
 func Load() *Config {
 	err := godotenv.Load()
@@ -31,8 +27,6 @@ func Load() *Config {
 	if weatherKey == "" {
 		log.Fatal("WEATHER_API_KEY is not set in .env file")
 	}
-
-	//повертаємо struct Config
 
 	return &Config{
 		TelegramToken: token,
