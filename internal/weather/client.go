@@ -83,6 +83,10 @@ func (c *Client) GetWeather(city string) (string, error) {
 		return "", fmt.Errorf("no weather data")
 	}
 
+	if len(city) < 2 {
+		return "", fmt.Errorf("city name is too short")
+	}
+
 	windDir := windDirection(data.Wind.Deg)
 	windSpeed := data.Wind.Speed
 

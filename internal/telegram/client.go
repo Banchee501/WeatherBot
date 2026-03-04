@@ -70,7 +70,10 @@ func (c *Client) SendMessage(chatID int64, text string) error {
 		"text":    text,
 	}
 
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
 
 	resp, err := c.httpClient.Post(
 		url,
@@ -79,6 +82,9 @@ func (c *Client) SendMessage(chatID int64, text string) error {
 	)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("telegram api returned %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
