@@ -45,18 +45,19 @@ func main() {
 			}
 
 			for _, update := range updates {
-				if update.Message.Text == "" || update.Message.Chat.ID == 0 {
-					continue
-				}
+				go func(update telegram.Update) {
+					if update.Message.Text == "" || update.Message.Chat.ID == 0 {
+						return
+					}
 
-				err := utils.Retry(ctx, 3, 500*time.Millisecond, func() error {
-					h.Handle(ctx, update.Message.Chat.ID, update.Message.Text)
-					return nil
-				})
-				if err != nil {
-					log.Println("Handler failed:", err)
-				}
-
+					err := utils.Retry(ctx, 3, 500*time.Millisecond, func() error {
+						h.Handle(ctx, update.Message.Chat.ID, update.Message.Text)
+						return nil
+					})
+					if err != nil {
+						log.Println("Handler failed:", err)
+					}
+				}(update)
 				lastUpdateID = update.UpdateID + 1
 			}
 		}

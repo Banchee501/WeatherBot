@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log"
 	"strings"
 )
 
@@ -28,7 +29,12 @@ func (h *Handler) Handle(ctx context.Context, chatID int64, text string) {
 
 	weatherText, err := h.weather.GetWeather(ctx, text)
 	if err != nil {
-		_ = h.bot.SendMessage(ctx, chatID, "Місто не знайдено")
+		log.Println("Weather error:", err)
+		if strings.Contains(err.Error(), "temporary error") || strings.Contains(err.Error(), "context deadline exceeded") {
+			_ = h.bot.SendMessage(ctx, chatID, "Сервер погоди тимчасово недоступний, спробуйте пізніше")
+		} else {
+			_ = h.bot.SendMessage(ctx, chatID, "Місто не знайдено")
+		}
 		return
 	}
 
