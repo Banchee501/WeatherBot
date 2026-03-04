@@ -41,33 +41,47 @@ type Update struct {
 }
 
 func (c *Client) GetUpdates(ctx context.Context, offset int) ([]Update, error) {
+
 	url := fmt.Sprintf(
 		"https://api.telegram.org/bot%s/getUpdates?offset=%d&timeout=30",
 		c.Token,
 		offset,
 	)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
+	var updates []Update
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	err := utils.Retry(ctx, 3, 500*time.Millisecond, func() error {
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("telegram api returned %d", resp.StatusCode)
-	}
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return err
+		}
 
-	var updateResp UpdateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&updateResp); err != nil {
-		return nil, err
-	}
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 
-	return updateResp.Result, nil
+		if resp.StatusCode >= 500 || resp.StatusCode == 429 {
+			return fmt.Errorf("temporary telegram error %d", resp.StatusCode)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("telegram api returned %d", resp.StatusCode)
+		}
+
+		var updateResp UpdateResponse
+
+		if err := json.NewDecoder(resp.Body).Decode(&updateResp); err != nil {
+			return err
+		}
+
+		updates = updateResp.Result
+		return nil
+	})
+
+	return updates, err
 }
 
 func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
