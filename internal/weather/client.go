@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/Banchee501/RossWeatherBot/internal/utils"
 )
 
 type Client struct {
@@ -59,48 +61,67 @@ func windDirection(deg float64) string {
 }
 
 func (c *Client) GetWeather(ctx context.Context, city string) (string, error) {
+
+	if len(city) < 2 {
+		return "", fmt.Errorf("city name is too short")
+	}
+
 	url := fmt.Sprintf(
 		"https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric&lang=ua",
 		city,
 		c.apiKey,
 	)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	resp, err := c.httpClient.Do(req)
+	var result string
+
+	err := utils.Retry(ctx, 3, 500*time.Millisecond, func() error {
+
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return err
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 500 || resp.StatusCode == 429 {
+			return fmt.Errorf("temporary error %d", resp.StatusCode)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("weather api returned %d", resp.StatusCode)
+		}
+
+		var data WeatherResponse
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			return err
+		}
+
+		if len(data.Weather) == 0 {
+			return fmt.Errorf("no weather data")
+		}
+
+		windDir := windDirection(data.Wind.Deg)
+		windSpeed := data.Wind.Speed
+
+		result = fmt.Sprintf(
+			"Погода в %s:\nТемпература: %.1f°C\nОпис: %s\n Вітер: %.1f м/с, %s",
+			city,
+			data.Main.Temp,
+			data.Weather[0].Description,
+			windSpeed,
+			windDir,
+		)
+
+		return nil
+	})
 
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("weather api returned %d", resp.StatusCode)
-	}
-
-	var data WeatherResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", err
-	}
-
-	if len(data.Weather) == 0 {
-		return "", fmt.Errorf("no weather data")
-	}
-
-	if len(city) < 2 {
-		return "", fmt.Errorf("city name is too short")
-	}
-
-	windDir := windDirection(data.Wind.Deg)
-	windSpeed := data.Wind.Speed
-
-	result := fmt.Sprintf(
-		"Погода в %s:\nТемпература: %.1f°C\nОпис: %s\n Вітер: %.1f м/с, %s",
-		city,
-		data.Main.Temp,
-		data.Weather[0].Description,
-		windSpeed,
-		windDir,
-	)
 
 	return result, nil
 }

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func Retty(ctx context.Context, attempts int, baseDelay time.Duration, fn func() error) error {
+func Retry(ctx context.Context, attempts int, baseDelay time.Duration, fn func() error) error {
 	var err error
 
 	for i := 0; i < attempts; i++ {
