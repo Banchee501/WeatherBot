@@ -21,7 +21,7 @@ func main() {
 	botClient := telegram.NewClient(cfg.TelegramToken)
 	weatherClient := weather.NewClient(cfg.WeatherAPIKey)
 
-	h := handler.New(botClient, weatherClient)
+	h := handler.New(weatherClient, botClient)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Banchee501/RossWeatherBot/internal/utils"
@@ -13,6 +14,7 @@ import (
 type Client struct {
 	apiKey     string
 	httpClient *http.Client
+	cache      *Cache
 }
 
 func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
@@ -25,6 +27,7 @@ func NewClient(apiKey string) *Client {
 		httpClient: &http.Client{
 			Timeout: 35 * time.Second,
 		},
+		cache: NewCache(10 * time.Minute),
 	}
 }
 
@@ -65,6 +68,12 @@ func windDirection(deg float64) string {
 }
 
 func (c *Client) GetWeather(ctx context.Context, city string) (string, error) {
+
+	cityKey := strings.ToLower(strings.TrimSpace(city))
+
+	if val, ok := c.cache.Get(cityKey); ok {
+		return val, nil
+	}
 
 	if len(city) < 2 {
 		return "", fmt.Errorf("city name is too short")
@@ -126,6 +135,8 @@ func (c *Client) GetWeather(ctx context.Context, city string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	c.cache.Set(cityKey, result)
 
 	return result, nil
 }
