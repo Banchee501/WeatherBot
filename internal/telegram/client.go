@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/Banchee501/RossWeatherBot/internal/utils"
 )
 
 type Client struct {
@@ -68,7 +70,8 @@ func (c *Client) GetUpdates(ctx context.Context, offset int) ([]Update, error) {
 	return updateResp.Result, nil
 }
 
-func (c *Client) SendMessage(chatID int64, text string) error {
+func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
+
 	url := fmt.Sprintf(
 		"https://api.telegram.org/bot%s/sendMessage",
 		c.Token,
@@ -84,18 +87,27 @@ func (c *Client) SendMessage(chatID int64, text string) error {
 		return err
 	}
 
-	resp, err := c.httpClient.Post(
-		url,
-		"application/json",
-		bytes.NewBuffer(jsonBody),
-	)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("telegram api returned %d", resp.StatusCode)
-	}
-	defer resp.Body.Close()
+	return utils.Retry(ctx, 3, 500*time.Millisecond, func() error {
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-	return nil
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 500 || resp.StatusCode == 429 {
+			return fmt.Errorf("temporary telegram error %d", resp.StatusCode)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("telegram api returned %d", resp.StatusCode)
+		}
+
+		return nil
+	})
 }

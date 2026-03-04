@@ -53,13 +53,13 @@ func main() {
 				text := strings.TrimSpace(update.Message.Text)
 
 				if text == "/start" {
-					botClient.SendMessage(update.Message.Chat.ID, "Напишіть назву міста")
+					botClient.SendMessage(ctx, update.Message.Chat.ID, "Напишіть назву міста")
 				} else {
 					weatherText, err := weatherClient.GetWeather(ctx, text)
 					if err != nil {
-						botClient.SendMessage(update.Message.Chat.ID, "Місто не знайдено")
+						botClient.SendMessage(ctx, update.Message.Chat.ID, "Місто не знайдено")
 					} else {
-						botClient.SendMessage(update.Message.Chat.ID, weatherText)
+						botClient.SendMessage(ctx, update.Message.Chat.ID, weatherText)
 					}
 				}
 
