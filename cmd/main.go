@@ -5,12 +5,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Banchee501/RossWeatherBot/internal/config"
+	"github.com/Banchee501/RossWeatherBot/internal/handler"
 	"github.com/Banchee501/RossWeatherBot/internal/telegram"
+	"github.com/Banchee501/RossWeatherBot/internal/utils"
 	"github.com/Banchee501/RossWeatherBot/internal/weather"
 )
 
@@ -20,14 +21,12 @@ func main() {
 	botClient := telegram.NewClient(cfg.TelegramToken)
 	weatherClient := weather.NewClient(cfg.WeatherAPIKey)
 
-	var lastUpdateID int
+	h := handler.New(botClient, weatherClient)
 
-	ctx, stop := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		syscall.SIGTERM,
-	)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	var lastUpdateID int
 
 	for {
 		select {
@@ -46,21 +45,16 @@ func main() {
 			}
 
 			for _, update := range updates {
-				if update.Message.Text == "" {
+				if update.Message.Text == "" || update.Message.Chat.ID == 0 {
 					continue
 				}
 
-				text := strings.TrimSpace(update.Message.Text)
-
-				if text == "/start" {
-					botClient.SendMessage(ctx, update.Message.Chat.ID, "Напишіть назву міста")
-				} else {
-					weatherText, err := weatherClient.GetWeather(ctx, text)
-					if err != nil {
-						botClient.SendMessage(ctx, update.Message.Chat.ID, "Місто не знайдено")
-					} else {
-						botClient.SendMessage(ctx, update.Message.Chat.ID, weatherText)
-					}
+				err := utils.Retry(ctx, 3, 500*time.Millisecond, func() error {
+					h.Handle(ctx, update.Message.Chat.ID, update.Message.Text)
+					return nil
+				})
+				if err != nil {
+					log.Println("Handler failed:", err)
 				}
 
 				lastUpdateID = update.UpdateID + 1

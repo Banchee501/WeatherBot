@@ -15,6 +15,10 @@ type Client struct {
 	httpClient *http.Client
 }
 
+func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
+	panic("unimplemented")
+}
+
 func NewClient(apiKey string) *Client {
 	return &Client{
 		apiKey: apiKey,

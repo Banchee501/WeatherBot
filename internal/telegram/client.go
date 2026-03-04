@@ -16,6 +16,10 @@ type Client struct {
 	httpClient *http.Client
 }
 
+func (c *Client) GetWeather(ctx context.Context, city string) (string, error) {
+	panic("unimplemented")
+}
+
 func NewClient(token string) *Client {
 	return &Client{
 		Token: token,
