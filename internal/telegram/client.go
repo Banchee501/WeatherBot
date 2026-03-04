@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -37,22 +38,30 @@ type Update struct {
 	} `json:"message"`
 }
 
-func (c *Client) GetUpdates(offset int) ([]Update, error) {
+func (c *Client) GetUpdates(ctx context.Context, offset int) ([]Update, error) {
 	url := fmt.Sprintf(
 		"https://api.telegram.org/bot%s/getUpdates?offset=%d&timeout=30",
 		c.Token,
 		offset,
 	)
 
-	resp, err := c.httpClient.Get(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("telegram api returned %d", resp.StatusCode)
+	}
+
 	var updateResp UpdateResponse
-	err = json.NewDecoder(resp.Body).Decode(&updateResp)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&updateResp); err != nil {
 		return nil, err
 	}
 

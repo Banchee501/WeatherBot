@@ -1,7 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Banchee501/RossWeatherBot/internal/config"
@@ -17,38 +22,49 @@ func main() {
 
 	var lastUpdateID int
 
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
 	for {
-		updates, err := botClient.GetUpdates(lastUpdateID)
-		if err != nil {
-			log.Println("Error getting updates:", err)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		if len(updates) == 0 {
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-
-		for _, update := range updates {
-			if update.Message.Text == "" {
+		select {
+		case <-ctx.Done():
+			log.Println("Shutting down...")
+			return
+		default:
+			updates, err := botClient.GetUpdates(ctx, lastUpdateID)
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				log.Println("Error getting updates:", err)
+				time.Sleep(1 * time.Second)
 				continue
 			}
 
-			text := update.Message.Text
-
-			if text == "/start" {
-				botClient.SendMessage(update.Message.Chat.ID, "Напишіть назву міста")
-			} else {
-				weatherText, err := weatherClient.GetWeather(text)
-				if err != nil {
-					botClient.SendMessage(update.Message.Chat.ID, "Місто не знайдено")
-				} else {
-					botClient.SendMessage(update.Message.Chat.ID, weatherText)
+			for _, update := range updates {
+				if update.Message.Text == "" {
+					continue
 				}
-			}
 
-			lastUpdateID = update.UpdateID + 1
+				text := strings.TrimSpace(update.Message.Text)
+
+				if text == "/start" {
+					botClient.SendMessage(update.Message.Chat.ID, "Напишіть назву міста")
+				} else {
+					weatherText, err := weatherClient.GetWeather(ctx, text)
+					if err != nil {
+						botClient.SendMessage(update.Message.Chat.ID, "Місто не знайдено")
+					} else {
+						botClient.SendMessage(update.Message.Chat.ID, weatherText)
+					}
+				}
+
+				lastUpdateID = update.UpdateID + 1
+			}
 		}
 	}
 }

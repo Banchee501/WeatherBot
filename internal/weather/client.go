@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -57,14 +58,16 @@ func windDirection(deg float64) string {
 	}
 }
 
-func (c *Client) GetWeather(city string) (string, error) {
+func (c *Client) GetWeather(ctx context.Context, city string) (string, error) {
 	url := fmt.Sprintf(
 		"https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric&lang=ua",
 		city,
 		c.apiKey,
 	)
 
-	resp, err := c.httpClient.Get(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	resp, err := c.httpClient.Do(req)
+
 	if err != nil {
 		return "", err
 	}
